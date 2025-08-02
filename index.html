@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hangman Game</title>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: linear-gradient(to bottom right, #fefcea, #f1da36);
+        text-align: center;
+        padding: 20px;
+      }
+      .tabs button {
+        margin: 5px;
+        padding: 10px 20px;
+        font-size: 14px;
+        cursor: pointer;
+        background-color: #ffc107;
+        border: none;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+      }
+      .tabs button:hover {
+        background-color: #ffca28;
+      }
+      #wordDisplay {
+        font-size: 36px;
+        letter-spacing: 12px;
+        margin: 30px 0;
+        color: #333;
+      }
+      .keyboard {
+        display: flex;
+        flex-wrap: wrap;
+        max-width: 600px;
+        margin: 0 auto;
+        justify-content: center;
+      }
+      .keyboard button {
+        width: 45px;
+        height: 45px;
+        margin: 6px;
+        font-size: 20px;
+        cursor: pointer;
+        background-color: #ffffff;
+        border: 2px solid #333;
+        border-radius: 5px;
+        transition: background-color 0.2s;
+      }
+      .keyboard button:hover:not([disabled]) {
+        background-color: #dcedc8;
+      }
+      .keyboard button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      #hintBar {
+        margin-top: 30px;
+        font-size: 20px;
+        color: #444;
+        font-style: italic;
+      }
+      #hangman {
+        white-space: pre;
+        font-family: monospace;
+        line-height: 1.2;
+        margin: 30px 0;
+        color: #c62828;
+        font-weight: bold;
+      }
+      .popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border: 3px solid #333;
+        border-radius: 10px;
+        padding: 20px 40px;
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+        z-index: 9999;
+        display: none;
+      }
+      .popup-buttons {
+        margin-top: 20px;
+      }
+      .popup-buttons button {
+        margin: 0 10px;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+      }
+      .popup-buttons button:hover {
+        background-color: #388e3c;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tabs">
+      <button onclick="selectWord(0)">Word 1</button>
+      <button onclick="selectWord(1)">Word 2</button>
+      <button onclick="selectWord(2)">Word 3</button>
+      <button onclick="selectWord(3)">Word 4</button>
+      <button onclick="selectWord(4)">Word 5</button>
+      <button onclick="selectWord(5)">Word 6</button>
+      <button onclick="selectWord(6)">Word 7</button>
+      <button onclick="selectWord(7)">Word 8</button>
+      <button onclick="selectWord(8)">Word 9</button>
+      <button onclick="selectWord(9)">Word 10</button>
+    </div>
+
+    <div id="hangman"></div>
+    <div id="wordDisplay"></div>
+    <div class="keyboard" id="keyboard"></div>
+    <div id="hintBar"></div>
+
+    <div id="popup" class="popup">
+      <div id="popupMessage"></div>
+      <div class="popup-buttons">
+        <button onclick="selectWord(currentWordIndex)">Try Again</button>
+        <button onclick="selectNextWord()">Next Word</button>
+      </div>
+    </div>
+
+    <script>
+      const words = [
+        {
+          word: "entrepreneur",
+          hint: "A person who starts, organizes, and manages a business.",
+        },
+        {
+          word: "entrepreneurship",
+          hint: "The process of running your own business.",
+        },
+        {
+          word: "employee",
+          hint: "Someone who works for another person or company.",
+        },
+        { word: "risk", hint: "Willingness to take chances in business." },
+        { word: "profit", hint: "The reward entrepreneurs hope to earn." },
+        {
+          word: "consumer",
+          hint: "A person who buys and uses products or services.",
+        },
+        {
+          word: "persistent",
+          hint: "One of the characteristics of a successful entrepreneur—keeps trying.",
+        },
+        {
+          word: "innovation",
+          hint: "The process of turning ideas into products or services.",
+        },
+        {
+          word: "independent",
+          hint: "A person who enjoys being in charge of projects.",
+        },
+        {
+          word: "responsible",
+          hint: "A personal quality important in entrepreneurship—being reliable.",
+        },
+      ];
+
+      let selectedWord = "";
+      let hint = "";
+      let guessed = [];
+      let wrong = 0;
+      let currentWordIndex = 0;
+      const maxWrong = 10;
+
+      const stages = [
+        `\n\n\n\n\n\n=======`,
+        `\n |\n |\n |\n |\n_|_____`,
+        `________\n |\n |\n |\n |\n_|_____`,
+        `________\n |      |\n |\n |\n |\n_|_____`,
+        `________\n |      |\n |      O\n |\n |\n_|_____`,
+        `________\n |      |\n |      O\n |      |\n |\n_|_____`,
+        `________\n |      |\n |      O\n |     /|\n |\n_|_____`,
+        `________\n |      |\n |      O\n |     /|\n |     /\n_|_____`,
+        `________\n |      |\n |      O\n |     /|\n |     / \\n_|_____`,
+        `________\n |      |\n |    (x_x)\n |     /|\n |     / \\n_|_____`,
+      ];
+
+      function selectWord(index) {
+        currentWordIndex = index;
+        selectedWord = words[index].word.toUpperCase();
+        hint = words[index].hint;
+        guessed = [];
+        wrong = 0;
+        document.getElementById("hintBar").textContent = "Hint: " + hint;
+        document.getElementById("popup").style.display = "none";
+        document.querySelectorAll(".tabs button")[index].textContent = `Word ${
+          index + 1
+        }`;
+        updateKeyboard();
+        updateDisplay();
+      }
+
+      function updateDisplay() {
+        let display = "";
+        for (let char of selectedWord) {
+          display += guessed.includes(char) ? char + " " : "_ ";
+        }
+        document.getElementById("wordDisplay").textContent = display.trim();
+        document.getElementById("hangman").textContent = stages[wrong];
+
+        if (!display.includes("_")) {
+          document.querySelectorAll(".tabs button")[
+            currentWordIndex
+          ].textContent = selectedWord;
+          showPopup("🎉 Correct! You guessed the word!");
+        } else if (wrong >= maxWrong - 1) {
+          showPopup("💀 Game Over! The word was: " + selectedWord);
+        }
+      }
+
+      function showPopup(message) {
+        document.getElementById("popupMessage").textContent = message;
+        document.getElementById("popup").style.display = "block";
+      }
+
+      function selectNextWord() {
+        const nextIndex = (currentWordIndex + 1) % words.length;
+        selectWord(nextIndex);
+      }
+
+      function handleGuess(letter, btn) {
+        if (guessed.includes(letter) || wrong >= maxWrong) return;
+        guessed.push(letter);
+        btn.disabled = true;
+        if (!selectedWord.includes(letter)) {
+          wrong++;
+        }
+        updateDisplay();
+      }
+
+      function updateKeyboard() {
+        const keyboardContainer = document.getElementById("keyboard");
+        keyboardContainer.innerHTML = "";
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach((letter) => {
+          const btn = document.createElement("button");
+          btn.textContent = letter;
+          btn.onclick = () => handleGuess(letter, btn);
+          keyboardContainer.appendChild(btn);
+        });
+      }
+
+      selectWord(0);
+    </script>
+  </body>
+</html>
