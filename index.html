@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -101,6 +102,20 @@
       .popup-buttons button:hover {
         background-color: #388e3c;
       }
+      #hintButton {
+        margin-top: 15px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #1976d2;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      #hintButton:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     </style>
   </head>
   <body>
@@ -115,16 +130,24 @@
       <button onclick="selectWord(7)">Word 8</button>
       <button onclick="selectWord(8)">Word 9</button>
       <button onclick="selectWord(9)">Word 10</button>
+      <button onclick="selectWord(10)">Word 11</button>
+      <button onclick="selectWord(11)">Word 12</button>
+      <button onclick="selectWord(12)">Word 13</button>
+      <button onclick="selectWord(13)">Word 14</button>
+      <button onclick="selectWord(14)">Word 15</button>
     </div>
 
     <div id="hangman"></div>
     <div id="wordDisplay"></div>
     <div class="keyboard" id="keyboard"></div>
+    <button id="hintButton" onclick="revealHintLetter()">
+      🔍 Reveal a Letter
+    </button>
     <div id="hintBar"></div>
 
     <div id="popup" class="popup">
       <div id="popupMessage"></div>
-      <div class="popup-buttons">
+      <div class="popup-buttons" id="popupButtons">
         <button onclick="selectWord(currentWordIndex)">Try Again</button>
         <button onclick="selectNextWord()">Next Word</button>
       </div>
@@ -166,15 +189,29 @@
           word: "responsible",
           hint: "A personal quality important in entrepreneurship—being reliable.",
         },
+        {
+          word: "creative",
+          hint: "Someone who is creative and likes generating new ideas.",
+        },
+        {
+          word: "resources",
+          hint: "What you must manage well in a business: time and money.",
+        },
+        {
+          word: "characteristics",
+          hint: "Traits that help a business owner succeed.",
+        },
+        {
+          word: "planner",
+          hint: "A person who evaluates risks and rewards before starting.",
+        },
+        {
+          word: "motivation",
+          hint: "The desire and ability to start a business.",
+        },
       ];
 
-      let selectedWord = "";
-      let hint = "";
-      let guessed = [];
-      let wrong = 0;
-      let currentWordIndex = 0;
       const maxWrong = 10;
-
       const stages = [
         `\n\n\n\n\n\n=======`,
         `\n |\n |\n |\n |\n_|_____`,
@@ -183,10 +220,17 @@
         `________\n |      |\n |      O\n |\n |\n_|_____`,
         `________\n |      |\n |      O\n |      |\n |\n_|_____`,
         `________\n |      |\n |      O\n |     /|\n |\n_|_____`,
-        `________\n |      |\n |      O\n |     /|\n |     /\n_|_____`,
-        `________\n |      |\n |      O\n |     /|\n |     / \\n_|_____`,
-        `________\n |      |\n |    (x_x)\n |     /|\n |     / \\n_|_____`,
+        `________\n |      |\n |      O\n |     /|\\\n |\n_|_____`,
+        `________\n |      |\n |      O\n |     /|\\\n |     /\n_|_____`,
+        `________\n |      |\n |      O\n |     /|\\\n |     / \\\n_|_____`,
+        `________\n |      |\n |    (x_x)\n |     /|\\\n |     / \\\n_|_____`,
       ];
+      let selectedWord = "";
+      let hint = "";
+      let guessed = [];
+      let wrong = 0;
+      let currentWordIndex = 0;
+      let hintCount = 0;
 
       function selectWord(index) {
         currentWordIndex = index;
@@ -194,8 +238,11 @@
         hint = words[index].hint;
         guessed = [];
         wrong = 0;
+        hintCount = 0;
+
         document.getElementById("hintBar").textContent = "Hint: " + hint;
         document.getElementById("popup").style.display = "none";
+        document.getElementById("hintButton").disabled = false;
         document.querySelectorAll(".tabs button")[index].textContent = `Word ${
           index + 1
         }`;
@@ -208,6 +255,7 @@
         for (let char of selectedWord) {
           display += guessed.includes(char) ? char + " " : "_ ";
         }
+
         document.getElementById("wordDisplay").textContent = display.trim();
         document.getElementById("hangman").textContent = stages[wrong];
 
@@ -215,15 +263,17 @@
           document.querySelectorAll(".tabs button")[
             currentWordIndex
           ].textContent = selectedWord;
-          showPopup("🎉 Correct! You guessed the word!");
+          showPopup("🎉 Correct! You guessed the word!", true);
         } else if (wrong >= maxWrong - 1) {
-          showPopup("💀 Game Over! The word was: " + selectedWord);
+          showPopup("💀 Game Over! The word was: " + selectedWord, false);
         }
       }
 
-      function showPopup(message) {
+      function showPopup(message, isCorrect) {
         document.getElementById("popupMessage").textContent = message;
         document.getElementById("popup").style.display = "block";
+        document.getElementById("popupButtons").children[0].style.display =
+          isCorrect ? "none" : "inline-block";
       }
 
       function selectNextWord() {
@@ -235,6 +285,8 @@
         if (guessed.includes(letter) || wrong >= maxWrong) return;
         guessed.push(letter);
         btn.disabled = true;
+        btn.style.opacity = "0.5";
+
         if (!selectedWord.includes(letter)) {
           wrong++;
         }
@@ -247,9 +299,32 @@
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach((letter) => {
           const btn = document.createElement("button");
           btn.textContent = letter;
+          btn.disabled = guessed.includes(letter);
+          if (guessed.includes(letter)) {
+            btn.style.opacity = "0.5";
+            btn.style.cursor = "not-allowed";
+          }
           btn.onclick = () => handleGuess(letter, btn);
           keyboardContainer.appendChild(btn);
         });
+      }
+
+      function revealHintLetter() {
+        if (hintCount >= 2) return;
+        const unguessed = selectedWord
+          .split("")
+          .filter((c) => !guessed.includes(c));
+        if (unguessed.length > 0) {
+          const randomLetter =
+            unguessed[Math.floor(Math.random() * unguessed.length)];
+          guessed.push(randomLetter);
+          hintCount++;
+          updateDisplay();
+          updateKeyboard();
+          if (hintCount >= 2) {
+            document.getElementById("hintButton").disabled = true;
+          }
+        }
       }
 
       selectWord(0);
